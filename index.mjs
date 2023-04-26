@@ -48,6 +48,7 @@ const checkTickets = async () => {
 await ctcA.p.Admin({
   params: {
     numTickets: MAX,
+    cost: stdlib.parseCurrency(5),
     reachT: token.id,
     day: 20,// in blocks 
   },

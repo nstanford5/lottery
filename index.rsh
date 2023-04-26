@@ -1,7 +1,3 @@
-/**
- * Build this similar to the NFT Raffle
- * Simulate a lottery drawing, best as possible
- */
 'reach 0.1';
 
 export const main = Reach.App(() => {
@@ -9,6 +5,7 @@ export const main = Reach.App(() => {
   const A = Participant('Admin', {
     params: Object({
       numTickets: UInt,
+      cost: UInt,
       reachT: Token,
       day: UInt,// len in blocks
     }),
@@ -22,26 +19,25 @@ export const main = Reach.App(() => {
   });
   init();
   A.only(() => {
-    const {numTickets, reachT, day} = declassify(interact.params);
+    const {numTickets, cost, reachT, day} = declassify(interact.params);
   });
-  A.publish(numTickets, reachT, day);
+  A.publish(numTickets, cost, reachT, day);
   commit();
   A.pay([[1, reachT]]);
   A.interact.launched(getContract());
 
   const pMap = new Map(Address, UInt);
   const end = lastConsensusTime() + day;
-  const [ticketsSold] = parallelReduce([1])
+  const [ticketsSold, tokensRec] = parallelReduce([1, 0])
     .invariant(balance(reachT) == 1, "non-network token balance wrong")
-    .invariant(balance() == 0, "network token balance wrong")
-    //.while(ticketsSold < numTickets)
+    .invariant(balance() == tokensRec, "network token balance wrong")
     .while(lastConsensusTime() < end && ticketsSold < (numTickets + 1))
     .api_(B.getTicket, (addr) => {
       check(isNone(pMap[addr]), "sorry, you already have a ticket");
-      return [0, (ret) => {
+      return [cost, (ret) => {
         pMap[addr] = ticketsSold;
         ret(ticketsSold);
-        return[ticketsSold + 1];
+        return[ticketsSold + 1, tokensRec + cost];
       }]
     })
   commit();
@@ -52,8 +48,8 @@ export const main = Reach.App(() => {
   A.interact.checkWin();
 
   // allow users to come check their win
-  const [winner] = parallelReduce([false])
-    .invariant(balance() == 0, "network token balance wrong")
+  const [winner, tokensTotal] = parallelReduce([false, tokensRec])
+    .invariant(winner ? balance() == 0 : balance() == tokensTotal, "network token balance wrong")
     .invariant(winner ? balance(reachT) == 0 : balance(reachT) == 1, "non-network token balance wrong")
     .while(winner == false)
     .api_(B.checkTicket, (addr) => {
@@ -63,12 +59,13 @@ export const main = Reach.App(() => {
         if(num == winningNum){
           ret(true);
           transfer(1, reachT).to(addr);
+          transfer(tokensTotal).to(addr);
           delete pMap[addr];
-          return [true];
+          return [true, 0];
         } else {
           ret(false);
           delete pMap[addr];
-          return [false];
+          return [false, tokensTotal];
         }
       }]
     })
