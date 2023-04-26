@@ -15,12 +15,11 @@ export const main = Reach.App(() => {
   });
   const B = API('Buyer', {
     getTicket: Fun([Address], UInt),
-    checkTicket: Fun([Address], Bool),
+    checkTicket: Fun([Address], Tuple(Bool, UInt)),
   });
   const V = View({
     cost: UInt,
     ticketsLeft: UInt,
-    totalToWin: UInt,
   })
   init();
   A.only(() => {
@@ -49,7 +48,6 @@ export const main = Reach.App(() => {
         return[ticketsSold + 1, tokensRec + cost];
       }]
     })
-  V.totalToWin.set(tokensRec);
   commit();
   A.only(() => {
     const winningNum = declassify(interact.winningNum());
@@ -59,8 +57,8 @@ export const main = Reach.App(() => {
  
 
   // allow users to come check their win
-  const [winner, tokensTotal] = parallelReduce([false, tokensRec])
-    .invariant(winner ? balance() == 0 : balance() == tokensTotal, "network token balance wrong")
+  const [winner] = parallelReduce([false])
+    .invariant(winner ? balance() == 0 : balance() == tokensRec, "network token balance wrong")
     .invariant(winner ? balance(reachT) == 0 : balance(reachT) == 1, "non-network token balance wrong")
     .while(winner == false)
     .api_(B.checkTicket, (addr) => {
@@ -68,15 +66,15 @@ export const main = Reach.App(() => {
       return[0, (ret) => {
         const num = fromSome(pMap[addr], 0);
         if(num == winningNum){
-          ret(true);
+          ret([true, tokensRec]);
           transfer(1, reachT).to(addr);
-          transfer(tokensTotal).to(addr);
+          transfer(tokensRec).to(addr);
           delete pMap[addr];
-          return [true, 0];
+          return [true];
         } else {
-          ret(false);
+          ret([false, tokensRec]);
           delete pMap[addr];
-          return [false, tokensTotal];
+          return [false];
         }
       }]
     })
