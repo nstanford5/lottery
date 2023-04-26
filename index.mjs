@@ -24,6 +24,10 @@ const startBuyers = async () => {
     
 
     try{
+      const cost = await ctc.unsafeViews.cost();
+      console.log(`The user sees the cost is ${stdlib.formatCurrency(cost)}`);
+      const left = await ctc.unsafeViews.ticketsLeft();
+      console.log(`The user sees the number of tickets left: ${left}`);
       const n = await ctc.apis.Buyer.getTicket(acc.getAddress());
       console.log(`This users ticket is number: ${n}`);
     } catch (e) {
@@ -49,7 +53,9 @@ const checkTickets = async () => {
         flag = b ? true : false;
         if(flag){
           const afterBal = await getBalance(acc);
-          console.log(`User: ${addr} had ${beforeBal} ${stdlib.standardUnit} and now has ${afterBal} ${stdlib.standardUnit}`);
+          const totalWinnings = await ctc.unsafeViews.totalToWin();
+          console.log(`User: ${addr} just won ${stdlib.formatCurrency(totalWinnings)} ${stdlib.standardUnit}S!`);
+          //console.log(`User: ${addr} had ${beforeBal} ${stdlib.standardUnit} and now has ${afterBal} ${stdlib.standardUnit}`);
         }
       } catch (e) {
         console.log(`The checkTicket call errored with ${e}`);

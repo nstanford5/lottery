@@ -17,11 +17,17 @@ export const main = Reach.App(() => {
     getTicket: Fun([Address], UInt),
     checkTicket: Fun([Address], Bool),
   });
+  const V = View({
+    cost: UInt,
+    ticketsLeft: UInt,
+    totalToWin: UInt,
+  })
   init();
   A.only(() => {
     const {numTickets, cost, reachT, day} = declassify(interact.params);
   });
   A.publish(numTickets, cost, reachT, day);
+  V.cost.set(cost);
   commit();
   A.pay([[1, reachT]]);
   A.interact.launched(getContract());
@@ -29,6 +35,9 @@ export const main = Reach.App(() => {
   const pMap = new Map(Address, UInt);
   const end = lastConsensusTime() + day;
   const [ticketsSold, tokensRec] = parallelReduce([1, 0])
+    .define(() => {
+      V.ticketsLeft.set((numTickets + 1) - ticketsSold);
+    })
     .invariant(balance(reachT) == 1, "non-network token balance wrong")
     .invariant(balance() == tokensRec, "network token balance wrong")
     .while(lastConsensusTime() < end && ticketsSold < (numTickets + 1))
@@ -40,12 +49,14 @@ export const main = Reach.App(() => {
         return[ticketsSold + 1, tokensRec + cost];
       }]
     })
+  V.totalToWin.set(tokensRec);
   commit();
   A.only(() => {
     const winningNum = declassify(interact.winningNum());
   });
   A.publish(winningNum);
   A.interact.checkWin();
+ 
 
   // allow users to come check their win
   const [winner, tokensTotal] = parallelReduce([false, tokensRec])
