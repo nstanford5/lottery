@@ -22,6 +22,7 @@ export const main = Reach.App(() => {
     ticketsLeft: UInt,
   })
   init();
+  
   A.only(() => {
     const {numTickets, cost, reachT, day} = declassify(interact.params);
   });
@@ -54,9 +55,7 @@ export const main = Reach.App(() => {
   });
   A.publish(winningNum);
   A.interact.checkWin();
- 
 
-  // allow users to come check their win
   const [winner] = parallelReduce([false])
     .invariant(winner ? balance() == 0 : balance() == tokensRec, "network token balance wrong")
     .invariant(winner ? balance(reachT) == 0 : balance(reachT) == 1, "non-network token balance wrong")

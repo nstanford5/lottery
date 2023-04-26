@@ -7,11 +7,8 @@ const sbal = stdlib.parseCurrency(50);
 const accA = await stdlib.newTestAccount(sbal);
 const token = await stdlib.launchToken(accA, "Reach Token", "reachT", {supply: MAX});
 const ctcA = accA.contract(backend);
-const fmt = (x) => stdlib.formatCurrency(x, 4);
-const getBalance = async (who) => fmt(await stdlib.balanceOf(who));
-
-
 let users = [];
+
 const startBuyers = async () => {
   const runBuyer = async (i) => {
     console.log(`Starting buyer number: ${i}`);
@@ -19,11 +16,9 @@ const startBuyers = async () => {
     console.log(`The accounts address is ${stdlib.formatAddress(acc.getAddress())}`);
     const ctc = acc.contract(backend, ctcA.getInfo());
     await acc.tokenAccept(token.id);
-    const beforeBal = await getBalance(acc);
-    users.push([acc, ctc, beforeBal]);
-    
+    users.push([acc, ctc]);
 
-    try{
+    try {
       const cost = await ctc.unsafeViews.cost();
       console.log(`The user sees the cost is ${stdlib.formatCurrency(cost)}`);
       const left = await ctc.unsafeViews.ticketsLeft();
@@ -34,27 +29,22 @@ const startBuyers = async () => {
       console.log(`The call errored with: ${e}`);
     }
   }
-  for(let i = 0; i < MAX; i++){
+  for(let i = 0; i < MAX; i++) {
     await runBuyer(i);
   }
-  // await runBuyer(1);
-  // await runBuyer(2);
-  // await runBuyer(3);
 };// end of startBuyers
 
 const checkTickets = async () => {
   let flag = false;
-  for(const [acc, ctc, beforeBal] of users){
-    if(!flag){
-      try{
+  for(const [acc, ctc] of users) {
+    if(!flag) {
+      try {
         const addr = stdlib.formatAddress(acc.getAddress());
         const [b, total] = await ctc.apis.Buyer.checkTicket(addr);
         console.log(`User: ${addr} sees their number matched is: ${b}`);
         flag = b ? true : false;
-        if(flag){
-          const afterBal = await getBalance(acc);
+        if(flag) {
           console.log(`User: ${addr} just won ${stdlib.formatCurrency(total)} ${stdlib.standardUnit}S!`);
-          //console.log(`User: ${addr} had ${beforeBal} ${stdlib.standardUnit} and now has ${afterBal} ${stdlib.standardUnit}`);
         } else {
           console.log(`Sorry, you didn't win this time. Prize pool: ${stdlib.formatCurrency(total)}`);
         }
@@ -70,7 +60,7 @@ await ctcA.p.Admin({
     numTickets: MAX,
     cost: stdlib.parseCurrency(5),
     reachT: token.id,
-    day: 20,// in blocks 
+    day: 20,// in blocks 4/26 Algorand blocks in a day = 22383
   },
   launched: (c) => {
     console.log(`Ready at contract ${c}`);
@@ -85,4 +75,5 @@ await ctcA.p.Admin({
     console.log(`Admin is ready to start checking tickets`);
     await checkTickets();
   },
-})
+});
+console.log(`Exiting...`);
