@@ -7,6 +7,10 @@ const sbal = stdlib.parseCurrency(50);
 const accA = await stdlib.newTestAccount(sbal);
 const token = await stdlib.launchToken(accA, "Reach Token", "reachT", {supply: MAX});
 const ctcA = accA.contract(backend);
+const fmt = (x) => stdlib.formatCurrency(x, 4);
+const getBalance = async (who) => fmt(await stdlib.balanceOf(who));
+
+
 let users = [];
 const startBuyers = async () => {
   const runBuyer = async (i) => {
@@ -15,7 +19,9 @@ const startBuyers = async () => {
     console.log(`The accounts address is ${stdlib.formatAddress(acc.getAddress())}`);
     const ctc = acc.contract(backend, ctcA.getInfo());
     await acc.tokenAccept(token.id);
-    users.push([acc, ctc]);
+    const beforeBal = await getBalance(acc);
+    users.push([acc, ctc, beforeBal]);
+    
 
     try{
       const n = await ctc.apis.Buyer.getTicket(acc.getAddress());
@@ -24,20 +30,27 @@ const startBuyers = async () => {
       console.log(`The call errored with: ${e}`);
     }
   }
-  await runBuyer(1);
-  await runBuyer(2);
-  await runBuyer(3);
+  for(let i = 0; i < MAX; i++){
+    await runBuyer(i);
+  }
+  // await runBuyer(1);
+  // await runBuyer(2);
+  // await runBuyer(3);
 };// end of startBuyers
 
 const checkTickets = async () => {
   let flag = false;
-  for(const [acc, ctc] of users){
+  for(const [acc, ctc, beforeBal] of users){
     if(!flag){
       try{
         const addr = stdlib.formatAddress(acc.getAddress());
         const b = await ctc.apis.Buyer.checkTicket(addr);
         console.log(`User: ${addr} sees their number matched is: ${b}`);
         flag = b ? true : false;
+        if(flag){
+          const afterBal = await getBalance(acc);
+          console.log(`User: ${addr} had ${beforeBal} ${stdlib.standardUnit} and now has ${afterBal} ${stdlib.standardUnit}`);
+        }
       } catch (e) {
         console.log(`The checkTicket call errored with ${e}`);
       }
@@ -54,7 +67,6 @@ await ctcA.p.Admin({
   },
   launched: (c) => {
     console.log(`Ready at contract ${c}`);
-    // call startBuyers here
     startBuyers();
   },
   winningNum: () => {
